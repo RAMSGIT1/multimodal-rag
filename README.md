@@ -289,7 +289,7 @@ Built as a Multi-Modal RAG portfolio project using:
 - Multi-provider LLMs
 
 ---
-
+Link : https://huggingface.co/spaces/ramsgpt1/multimodal-rag
 # ⭐ If You Like This Project
 
 Give it a ⭐ on GitHub.
