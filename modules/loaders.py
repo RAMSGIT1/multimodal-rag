@@ -63,7 +63,8 @@ def load_pdfs(uploaded_files):
             images = convert_from_path(
                 path,
                 first_page=1,
-                last_page=5,
+                last_page=2,
+                dpi=300,
                 # poppler_path=r"D:\poppler\Library\bin"
             )
 

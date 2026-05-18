@@ -242,6 +242,7 @@ image_files = st.sidebar.file_uploader(
 )
 
 
+
 # =========================
 # PROCESS INPUTS
 # =========================
@@ -251,6 +252,10 @@ if st.sidebar.button("🚀 Process Inputs"):
 
     # PDFs + NOTEBOOKS
     for file in pdf_files:
+
+        if file.size > 10 * 1024 * 1024:
+            st.error("PDF too large. Upload files under 5MB.")
+            st.stop()
 
         if file.name.endswith(".pdf"):
             docs += load_pdfs([file])
