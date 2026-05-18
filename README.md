@@ -1,3 +1,15 @@
+---
+title: multimodal-rag
+emoji: 🚀
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_file: app.py
+pinned: false
+---
+
+# 🚀 Multi-Modal RAG Assistant
+
 # 🚀 Multi-Modal RAG Assistant
 
 A powerful Multi-Modal Retrieval-Augmented Generation (RAG) application built using Streamlit, LangChain, FAISS, OCR, and multiple LLM providers.
