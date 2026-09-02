@@ -102,7 +102,8 @@ def load_ipynb(file):
 
         cell_type = cell.get("cell_type")
 
-        content = "".join(cell.get("source", []))
+        source = cell.get("source", [])
+        content = "".join(source) if isinstance(source, list) and all(isinstance(s, str) for s in source) else str(source)
 
         if content.strip():
 
@@ -187,7 +188,7 @@ def load_images(image_files):
 
             result = reader.readtext(image_np, detail=0)
 
-            text = " ".join(result)
+            text = " ".join(str(item) for item in result)
 
             if not text.strip():
                 text = "No text detected"
