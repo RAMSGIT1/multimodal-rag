@@ -5,7 +5,7 @@ from io import BytesIO
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 
-from modules.llm import get_llm
+from modules.llm import get_llm, get_available_models
 from modules.embeddings import get_embeddings
 from modules.loaders import (
     load_pdfs,
@@ -121,7 +121,7 @@ def export_pdf(chat):
 # =========================
 # SAFE CONTEXT
 # =========================
-def build_context(docs, max_chars=6000):
+def build_context(docs, max_chars=12000):
 
     context_parts = []
 
@@ -191,36 +191,91 @@ api_key = st.sidebar.text_input(
     "API Key",
     type="password"
 )
-
-model_map = {
-
-    "groq": [
-        "openai/gpt-oss-20b",
-        "llama-3.1-8b-instant",
-        "llama-3.3-70b-versatile",
-        "mixtral-8x7b-32768"
-    ],
-
-    "openai": [
-        "gpt-4o-mini",
-        "gpt-4o"
-    ],
-
-    "gemini": [
-        "gemini-1.5-flash"
-    ],
-
-    "ollama": [
-        "llama3",
-        "mistral"
-    ]
-}
-
-model = st.sidebar.selectbox(
-    "Model",
-    model_map[provider]
+temperature = st.sidebar.slider(
+    "🌡️ Temperature",
+    min_value=0.0,
+    max_value=1.0,
+    value=0.3,
+    step=0.1,
+    help="Lower = more focused and deterministic. Higher = more creative."
 )
+# Initialize session state
+if "models" not in st.session_state:
+    st.session_state.models = []
 
+if "models_provider" not in st.session_state:
+    st.session_state.models_provider = None
+
+if "models_key_fingerprint" not in st.session_state:
+    st.session_state.models_key_fingerprint = None
+
+
+# Clear models when provider changes
+if provider != st.session_state.models_provider:
+    st.session_state.models = []
+    st.session_state.models_provider = provider
+    st.session_state.models_key_fingerprint = None
+
+
+# Load Models button
+if st.sidebar.button("🔄 Load Models", use_container_width=True):
+
+    if provider != "ollama" and not api_key:
+        st.sidebar.error("Please enter your API key first.")
+
+    else:
+        import hashlib
+
+        key_fingerprint = hashlib.sha256(
+            api_key.encode()
+        ).hexdigest() if api_key else "ollama"
+
+        with st.sidebar:
+            with st.spinner("Fetching available models..."):
+
+                models, error = get_available_models(
+                    provider,
+                    api_key if provider != "ollama" else None
+                )
+
+        if error:
+            st.sidebar.error(error)
+            st.session_state.models = []
+
+        else:
+            st.session_state.models = models
+            st.session_state.models_provider = provider
+            st.session_state.models_key_fingerprint = key_fingerprint
+
+            st.sidebar.success(
+                f"Loaded {len(models)} models"
+            )
+
+
+# Model selection
+if st.session_state.models:
+
+    model = st.sidebar.selectbox(
+        "Model",
+        st.session_state.models
+    )
+
+else:
+
+    model = None
+
+    if provider == "ollama":
+        st.sidebar.info(
+            "Click '🔄 Load Models' to detect your local Ollama models."
+        )
+    elif api_key:
+        st.sidebar.info(
+            "Click '🔄 Load Models' to fetch models for this API key."
+        )
+    else:
+        st.sidebar.info(
+            "Enter your API key, then click '🔄 Load Models'."
+        )
 
 # =========================
 # INPUTS
@@ -326,7 +381,8 @@ if query:
     llm = get_llm(
         provider,
         model,
-        api_key
+        api_key,
+        temperature
     )
 
     # =========================
@@ -335,8 +391,9 @@ if query:
     retriever = st.session_state.vs.as_retriever(
         search_type="mmr",
         search_kwargs={
-            "k": 4,
-            "fetch_k": 10
+            "k": 6,
+            "fetch_k": 15,
+            "lambda_mult": 0.7
         }
     )
     
@@ -349,27 +406,34 @@ if query:
     # PROMPT
     # =========================
     prompt = f"""
-You are an advanced Multi-Modal RAG assistant.
+You are an expert AI assistant answering questions using the provided
+document context.
 
-Answer using ONLY the provided context.
+Your goal is to give a detailed, accurate, and useful answer.
 
-RULES:
-- Use clean numbered sections
-- Keep answers concise and practical
-- Use short bullet points
-- Avoid markdown syntax
-- Avoid markdown tables
-- Avoid bold formatting
-- Avoid long paragraphs
-- Avoid repetition
+IMPORTANT RULES:
+1. Use the provided context as the primary source of truth.
+2. Do not invent facts that are not supported by the context.
+3. Answer the user's question directly first.
+4. Explain the answer clearly and in sufficient detail.
+5. When appropriate, use headings, bullet points, numbered steps, examples,
+   comparisons, and short explanations.
+6. If the context contains multiple relevant pieces of information,
+   combine them into a coherent answer.
+7. If the answer involves a process, explain it step-by-step.
+8. If the context does not contain enough information, clearly say what
+   information is missing instead of guessing.
+9. Avoid unnecessary repetition.
+10. Preserve important technical terminology, names, numbers, and facts
+    from the source.
 
-CONTEXT:
+DOCUMENT CONTEXT:
 {context}
 
-QUESTION:
+USER QUESTION:
 {query}
 
-Provide a direct well-structured answer.
+DETAILED ANSWER:
 """
 
     # =========================
