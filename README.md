@@ -8,7 +8,6 @@ app_file: app.py
 pinned: false
 ---
 
-# 🚀 Multi-Modal RAG Assistant
 
 # 🚀 Multi-Modal RAG Assistant
 
